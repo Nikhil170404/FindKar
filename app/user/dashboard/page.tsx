@@ -160,7 +160,7 @@ export default function UserDashboard() {
       // Get only ONLINE vendors
       const { data: vendorsData, error, count } = await supabase
         .from("vendors")
-        .select("id, name, category, category_emoji, lat, lng, last_online_at", { count: "exact" })
+        .select("id, name, category, category_emoji, lat, lng, last_online_at, menu_items", { count: "exact" })
         .eq("status", "online")
         .order("last_online_at", { ascending: false })
         .range(from, to)
@@ -170,16 +170,21 @@ export default function UserDashboard() {
       // Calculate distances
       const currentLocation = userLocationRef.current
       const vendorsWithDistance: Vendor[] = (vendorsData || []).map((vendor) => {
+        let distance: number | undefined = undefined
         if (currentLocation && vendor.lat && vendor.lng) {
-          const distance = calculateDistance(
+          distance = calculateDistance(
             currentLocation.latitude,
             currentLocation.longitude,
             vendor.lat,
             vendor.lng
           )
-          return { ...vendor, distance }
         }
-        return { ...vendor, distance: undefined }
+        return {
+          ...vendor,
+          distance,
+          // Ensure menu_items is array
+          menu_items: Array.isArray(vendor.menu_items) ? vendor.menu_items : []
+        }
       })
 
       // Sort by distance
@@ -246,37 +251,7 @@ export default function UserDashboard() {
 
         setHighlights(prev => ({ ...prev, ...highlightsByVendor }))
 
-        // Fetch menu items for vendors
-        const { data: menuData, error: menuError } = await supabase
-          .from("vendor_menu")
-          .select(`
-            vendor_id,
-            menu_items:menu_item_id(name)
-          `)
-          .in("vendor_id", vendorsData.map((v) => v.id))
-
-        if (menuError) {
-          console.log("Menu fetch error:", menuError)
-        }
-        console.log("Menu data:", menuData)
-
-        const menuByVendor: Record<string, string[]> = {}
-        menuData?.forEach((m: any) => {
-          if (!menuByVendor[m.vendor_id]) {
-            menuByVendor[m.vendor_id] = []
-          }
-          if (m.menu_items?.name) {
-            menuByVendor[m.vendor_id].push(m.menu_items.name)
-          }
-        })
-
-        console.log("Menu by vendor:", menuByVendor)
-
-        // Update vendors with menu items
-        setVendors(prev => prev.map(v => ({
-          ...v,
-          menu_items: menuByVendor[v.id] || []
-        })))
+        // Legacy vendor_menu fetch removed
       }
     } catch (error) {
       console.error("Error fetching vendors:", error)
@@ -541,10 +516,12 @@ export default function UserDashboard() {
                       <p className="text-sm text-gray-600 dark:text-gray-400">{vendor.category}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    LIVE
-                  </div>
+                </div>
+
+                {/* Live Badge (Moved to bottom right) */}
+                <div className="absolute bottom-6 right-6 flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  LIVE
                 </div>
 
                 {/* Highlights */}

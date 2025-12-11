@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Store, Loader2, WifiOff, RefreshCw, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { ADMIN_EMAILS } from "@/lib/constants"
 
 function LoginContent() {
   const router = useRouter()
@@ -38,8 +39,12 @@ function LoginContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Already logged in, redirect
-        router.replace("/user/dashboard")
+        // Check if admin
+        if (user.email && ADMIN_EMAILS.includes(user.email)) {
+          router.replace("/admin")
+        } else {
+          router.replace("/user/dashboard")
+        }
         return
       }
     } catch (err) {

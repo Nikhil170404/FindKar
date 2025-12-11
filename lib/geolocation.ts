@@ -136,6 +136,9 @@ const toRad = (degrees: number): number => {
  * @returns Formatted string (e.g., "2.5 km" or "500 m")
  */
 export const formatDistance = (distance: number): string => {
+  if (distance < 0.05) { // Less than 50m considers as "at location" due to GPS drift
+    return "0 m"
+  }
   if (distance < 1) {
     return `${Math.round(distance * 1000)} m`
   }
@@ -151,8 +154,8 @@ export const formatDistance = (distance: number): string => {
  */
 export const getDirectionsUrl = (lat: number, lng: number, name?: string): string => {
   // Always use coordinates only for accurate mapping
-  // Added travelmode=driving to help start navigation faster
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
+  // Added travelmode=walking to help start navigation faster
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`
 }
 
 /**

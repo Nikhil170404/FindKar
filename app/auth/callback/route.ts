@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-
-const ADMIN_EMAIL = "aipgl200ok@gmail.com"
+import { ADMIN_EMAILS } from "@/lib/constants"
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -18,7 +17,7 @@ export async function GET(request: Request) {
 
     if (user) {
       // Admin users go to admin panel
-      if (user.email === ADMIN_EMAIL) {
+      if (user.email && ADMIN_EMAILS.includes(user.email)) {
         return NextResponse.redirect(new URL("/admin", requestUrl.origin))
       }
 

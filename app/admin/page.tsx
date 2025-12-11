@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, Search, Copy, Edit, Trash2, MapPin, Loader2, Check, ChevronLeft, ChevronRight, LogOut, Eye } from "lucide-react"
+import { Plus, Search, Copy, Edit, Trash2, MapPin, Loader2, Check, ChevronLeft, ChevronRight, LogOut, Eye, Power } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { ADMIN_EMAILS } from "@/lib/constants"
 
-const ADMIN_EMAIL = "aipgl200ok@gmail.com"
 const PAGE_SIZE = 20
 
 interface Vendor {
@@ -34,6 +34,7 @@ export default function AdminDashboard() {
     const [totalCount, setTotalCount] = useState(0)
     const [copiedId, setCopiedId] = useState<string | null>(null)
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [toggling, setToggling] = useState<string | null>(null)
 
     useEffect(() => {
         checkAdmin()
@@ -52,7 +53,7 @@ export default function AdminDashboard() {
             return
         }
 
-        if (user.email !== ADMIN_EMAIL) {
+        if (!user.email || !ADMIN_EMAILS.includes(user.email)) {
             router.push("/user/dashboard")
             return
         }
@@ -82,6 +83,35 @@ export default function AdminDashboard() {
         setVendors(data || [])
         setTotalCount(count || 0)
     }, [page, searchQuery, supabase])
+
+    const toggleStatus = async (vendor: Vendor) => {
+        const newStatus = vendor.status === "online" ? "offline" : "online"
+        setToggling(vendor.id)
+
+        // Optimistic update
+        setVendors(vendors.map(v => v.id === vendor.id ? { ...v, status: newStatus } : v))
+
+        try {
+            const updates: any = { status: newStatus }
+            if (newStatus === "online") {
+                updates.last_online_at = new Date().toISOString()
+            }
+
+            const { error } = await supabase
+                .from("vendors")
+                .update(updates)
+                .eq("id", vendor.id)
+
+            if (error) throw error
+        } catch (error) {
+            console.error("Error toggling status:", error)
+            alert("Failed to update status")
+            // Revert
+            setVendors(vendors.map(v => v.id === vendor.id ? { ...v, status: vendor.status } : v))
+        } finally {
+            setToggling(null)
+        }
+    }
 
     const copyVendorLink = (vendor: Vendor) => {
         const link = `${window.location.origin}/v/${vendor.vendor_secret_key}`
@@ -212,27 +242,45 @@ export default function AdminDashboard() {
 
                                 {/* Actions */}
                                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                                    {/* Toggle Status Button */}
+                                    <button
+                                        onClick={() => toggleStatus(vendor)}
+                                        disabled={toggling === vendor.id}
+                                        className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-bold transition-colors ${vendor.status === "online"
+                                            ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                            : "bg-green-100 text-green-700 hover:bg-green-200"
+                                            }`}
+                                    >
+                                        {toggling === vendor.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Power className="w-4 h-4" />
+                                        )}
+                                        {vendor.status === "online" ? "Close" : "Open"}
+                                    </button>
+
                                     <button
                                         onClick={() => copyVendorLink(vendor)}
                                         className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-medium transition-colors ${copiedId === vendor.id
-                                            ? "bg-green-100 text-green-600"
+                                            ? "bg-green-50 text-green-600"
                                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                             }`}
                                     >
                                         {copiedId === vendor.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                        {copiedId === vendor.id ? "Copied!" : "Copy Link"}
+                                        {copiedId === vendor.id ? "Copied" : "Link"}
                                     </button>
+
                                     <Link
                                         href={`/admin/edit/${vendor.id}`}
-                                        className="flex-1 flex items-center justify-center gap-1 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm font-medium"
+                                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
                                     >
                                         <Edit className="w-4 h-4" />
-                                        Edit
                                     </Link>
+
                                     <button
                                         onClick={() => deleteVendor(vendor.id)}
                                         disabled={deleting === vendor.id}
-                                        className="p-2 bg-red-100 text-red-600 rounded-lg disabled:opacity-50"
+                                        className="p-2 bg-red-50 text-red-600 rounded-lg disabled:opacity-50 hover:bg-red-100"
                                     >
                                         {deleting === vendor.id ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />

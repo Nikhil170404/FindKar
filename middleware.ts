@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { ADMIN_EMAILS } from "@/lib/constants"
 
 export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
@@ -41,6 +42,13 @@ export async function middleware(request: NextRequest) {
 
     // If user is logged in and tries to access home or login page
     if (user && (pathname === "/" || pathname === "/login")) {
+        // Check if admin
+        if (user.email && ADMIN_EMAILS.includes(user.email)) {
+            const redirectUrl = request.nextUrl.clone()
+            redirectUrl.pathname = "/admin"
+            return NextResponse.redirect(redirectUrl)
+        }
+
         // Check if user is a vendor
         const { data: vendor } = await supabase
             .from("vendors")

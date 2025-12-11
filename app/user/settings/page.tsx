@@ -175,9 +175,8 @@ export default function UserSettings() {
             )}
           </div>
 
-          <button className="w-full mt-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
-            Edit Profile
-          </button>
+
+
         </div>
 
 
